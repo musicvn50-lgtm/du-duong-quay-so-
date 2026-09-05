@@ -1,489 +1,284 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>DU DƯƠNG - Quay số</title>
-
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #f6efdc;
-      font-family: Arial, sans-serif;
-    }
-
-    .card {
-      width: 92%;
-      max-width: 500px;
-      padding: 45px 30px;
-      background: #fffdf8;
-      border-radius: 28px;
-      text-align: center;
-      box-shadow: 0 15px 45px rgba(60,40,20,.15);
-    }
-
-    .title {
-      font-size: 42px;
-      font-weight: 900;
-      color: #2e241d;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      font-size: 17px;
-      font-weight: bold;
-      color: #98583d;
-    }
-
-    .number {
-      height: 130px;
-      margin: 45px 0 30px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 100px;
-      font-weight: 900;
-      color: #4b2d20;
-      transform: scale(1);
-    }
-
-    .rolling {
-      animation: rolling .16s ease-in-out infinite alternate;
-    }
-
-    @keyframes rolling {
-      from {
-        transform: scale(1);
-      }
-
-      to {
-        transform: scale(1.04);
-      }
-    }
-
-    .winner {
-      animation: winner .3s ease-out;
-    }
-
-    @keyframes winner {
-      0% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(1.15);
-      }
-
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    button {
-      border: none;
-      padding: 17px 45px;
-      border-radius: 50px;
-      background: #837c75;
-      color: white;
-      font-size: 20px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: .2s;
-    }
-
-    button:hover:not(:disabled) {
-      transform: scale(1.03);
-    }
-
-    button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
-
-    .status {
-      min-height: 25px;
-      margin-top: 20px;
-      color: #8b6b57;
-      font-size: 15px;
-    }
-
-    .error {
-      color: #b33a3a;
-    }
-
-    .barcode {
-      margin-top: 25px;
-      min-height: 90px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .note {
-      margin-top: 20px;
-      color: #aaa;
-      font-size: 12px;
-    }
-  </style>
-</head>
-
-<body>
-
-  <div class="card">
-
-    <div class="title">
-      DU DƯƠNG
-    </div>
-
-    <div class="subtitle">
-      SỐ MAY MẮN 1 – 100
-    </div>
-
-    <div id="number" class="number">
-      ?
-    </div>
-
-    <button id="button" onclick="quaySo()">
-      QUAY SỐ
-    </button>
-
-    <div id="status" class="status">
-      Bạn chưa quay số
-    </div>
-
-    <div class="barcode">
-      <svg id="barcode"></svg>
-    </div>
-
-    <div class="note">
-      Mỗi lượt chỉ được quay một lần
-    </div>
-
-  </div>
+const SHEET_ID = "1aKuk2cEMV9ykDzRqf0mol-jN2Qd7hQa2ox738smF-BM";
+const SHEET_NAME = "Sheet1";
 
 
-<script>
+// ========================================
+// LẤY SHEET
+// ========================================
+function getSheet() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sheet = ss.getSheetByName(SHEET_NAME);
 
-/* =====================================================
-   GOOGLE APPS SCRIPT
-   ===================================================== */
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+  }
 
-const API_URL =
-"https://script.google.com/macros/s/AKfycby3U-Cyvo14JAVp8GM_iotSySV5JUT5H8Tc3WzyK9Ud-IizoMTV8RULH2RMjRPebRtV/exec";
-
-
-let dangQuay = false;
-let soThat = null;
-let loiAPI = null;
-
-
-/* =====================================================
-   ELEMENT
-   ===================================================== */
-
-const numberBox =
-document.getElementById("number");
-
-const button =
-document.getElementById("button");
-
-const status =
-document.getElementById("status");
-
-
-/* =====================================================
-   QUAY SỐ
-   ===================================================== */
-
-function quaySo() {
-
-  if (dangQuay) return;
-
-  dangQuay = true;
-
-  soThat = null;
-
-  loiAPI = null;
-
-  button.disabled = true;
-
-  numberBox.classList.remove("winner");
-
-  numberBox.classList.add("rolling");
-
-  status.classList.remove("error");
-
-  status.innerText =
-    "Đang quay số...";
-
-
-  /*
-   * GỌI GOOGLE NGAY LẬP TỨC
-   * KHÔNG CHỜ HIỆU ỨNG
-   */
-
-  laySo();
-
-
-  /*
-   * BẮT ĐẦU HIỆU ỨNG NGAY
-   */
-
-  chayHieuUng();
-
+  return sheet;
 }
 
 
-/* =====================================================
-   GỌI API
-   ===================================================== */
+// ========================================
+// KHỞI TẠO 100 SỐ
+// ========================================
+function khoiTaoBang() {
 
-function laySo() {
+  const sheet = getSheet();
 
-  fetch(
-    API_URL + "?t=" + Date.now(),
-    {
-      method: "GET",
-      cache: "no-store"
-    }
-  )
+  sheet.clear();
 
-  .then(function(response) {
+  sheet.getRange(1, 1, 1, 4).setValues([[
+    "Số",
+    "Trạng thái",
+    "Thời gian",
+    "Mã lượt"
+  ]]);
 
-    if (!response.ok) {
-      throw new Error(
-        "HTTP " + response.status
-      );
-    }
+  const data = [];
 
-    return response.json();
+  for (let i = 1; i <= 100; i++) {
 
-  })
+    data.push([
+      i,
+      "Chưa dùng",
+      "",
+      ""
+    ]);
 
-  .then(function(data) {
+  }
 
-    console.log("DU DUONG:", data);
+  sheet.getRange(2, 1, 100, 4).setValues(data);
 
-    if (
-      data &&
-      data.success === true &&
-      data.so
-    ) {
+  sheet.getRange("A1:D1")
+    .setFontWeight("bold");
 
-      /*
-       * KHÔNG THÊM SỐ 0 PHÍA TRƯỚC
-       */
-
-      soThat =
-        String(Number(data.so));
-
-      return;
-    }
-
-
-    throw new Error(
-      data && data.message
-        ? data.message
-        : "Không nhận được số"
-    );
-
-  })
-
-  .catch(function(error) {
-
-    console.error(error);
-
-    loiAPI = error;
-
-  });
-
+  sheet.autoResizeColumns(1, 4);
 }
 
 
-/* =====================================================
-   HIỆU ỨNG QUAY
-   ===================================================== */
+// ========================================
+// QUAY SỐ
+// ========================================
+function doGet(e) {
 
-function chayHieuUng() {
+  const callback =
+    e &&
+    e.parameter &&
+    e.parameter.callback
+      ? String(e.parameter.callback)
+      : "";
 
-  let lastNumber = 0;
-
-  const startTime = Date.now();
-
-  /*
-   * Ít nhất 2 giây để quay
-   */
-
-  const minimumTime = 2000;
-
-
-  function frame() {
-
-    /*
-     * API LỖI
-     */
-
-    if (loiAPI) {
-
-      numberBox.classList.remove("rolling");
-
-      numberBox.innerText = "?";
-
-      status.classList.add("error");
-
-      status.innerText =
-        "Không thể kết nối với hệ thống";
-
-      button.disabled = false;
-
-      dangQuay = false;
-
-      return;
-    }
+  let clientId =
+    e &&
+    e.parameter &&
+    e.parameter.clientId
+      ? String(e.parameter.clientId).trim()
+      : "";
 
 
-    /*
-     * API CHƯA TRẢ
-     * TIẾP TỤC QUAY
-     */
+  // ======================================
+  // NẾU KHÔNG CÓ MÃ THIẾT BỊ
+  // ======================================
+  if (!clientId) {
 
-    if (!soThat) {
-
-      let random;
-
-      do {
-
-        random =
-          Math.floor(
-            Math.random() * 100
-          ) + 1;
-
-      } while (
-        random === lastNumber
-      );
-
-
-      lastNumber = random;
-
-      numberBox.innerText =
-        random;
-
-
-      requestAnimationFrame(frame);
-
-      return;
-    }
-
-
-    /*
-     * API ĐÃ TRẢ
-     * NHƯNG CHƯA ĐỦ 2 GIÂY
-     */
-
-    const elapsed =
-      Date.now() - startTime;
-
-
-    if (elapsed < minimumTime) {
-
-      let random;
-
-      do {
-
-        random =
-          Math.floor(
-            Math.random() * 100
-          ) + 1;
-
-      } while (
-        random === lastNumber
-      );
-
-
-      lastNumber = random;
-
-      numberBox.innerText =
-        random;
-
-
-      requestAnimationFrame(frame);
-
-      return;
-    }
-
-
-    /*
-     * DỪNG TẠI SỐ THẬT
-     */
-
-    numberBox.classList.remove("rolling");
-
-    numberBox.innerText =
-      soThat;
-
-
-    /*
-     * Hiệu ứng thắng
-     */
-
-    numberBox.classList.add("winner");
-
-
-    status.innerText =
-      "🎉 Số may mắn của bạn là " + soThat;
-
-
-    button.innerText =
-      "ĐÃ QUAY";
-
-    button.disabled = true;
-
-    dangQuay = true;
-
-
-    taoBarcode(soThat);
+    return traVe({
+      success: false,
+      message: "Thiếu mã thiết bị"
+    }, callback);
 
   }
 
 
-  requestAnimationFrame(frame);
+  // ======================================
+  // KHÓA ĐỂ 100 NGƯỜI QUAY CÙNG LÚC
+  // KHÔNG BAO GIỜ TRÙNG SỐ
+  // ======================================
+  const lock = LockService.getScriptLock();
 
-}
+  lock.waitLock(30000);
 
+  try {
 
-/* =====================================================
-   BARCODE
-   ===================================================== */
+    const sheet = getSheet();
 
-function taoBarcode(so) {
+    const lastRow = sheet.getLastRow();
 
-  JsBarcode(
-    "#barcode",
-    String(so),
-    {
-      format: "CODE128",
-      width: 3,
-      height: 70,
-      displayValue: true,
-      fontSize: 18,
-      margin: 5
+    if (lastRow < 101) {
+
+      return traVe({
+        success: false,
+        message: "Chưa có đủ 100 số"
+      }, callback);
+
     }
-  );
+
+
+    // ====================================
+    // KIỂM TRA THIẾT BỊ ĐÃ QUAY
+    // ====================================
+    const maLuotData =
+      sheet
+        .getRange(2, 4, 100, 1)
+        .getValues();
+
+
+    for (let i = 0; i < maLuotData.length; i++) {
+
+      if (
+        maLuotData[i][0] &&
+        String(maLuotData[i][0]) === clientId
+      ) {
+
+        const so =
+          sheet
+            .getRange(i + 2, 1)
+            .getValue();
+
+        return traVe({
+          success: true,
+          so: Number(so),
+          daCo: true,
+          message: "Thiết bị đã quay trước đó"
+        }, callback);
+
+      }
+
+    }
+
+
+    // ====================================
+    // LẤY DANH SÁCH SỐ CHƯA DÙNG
+    // ====================================
+    const trangThai =
+      sheet
+        .getRange(2, 2, 100, 1)
+        .getValues();
+
+
+    const available = [];
+
+    for (let i = 0; i < 100; i++) {
+
+      if (trangThai[i][0] !== "Đã dùng") {
+        available.push(i + 2);
+      }
+
+    }
+
+
+    // ====================================
+    // HẾT SỐ
+    // ====================================
+    if (available.length === 0) {
+
+      return traVe({
+        success: false,
+        message: "Đã hết 100 số"
+      }, callback);
+
+    }
+
+
+    // ====================================
+    // CHỌN NGẪU NHIÊN
+    // ====================================
+    const randomIndex =
+      Math.floor(
+        Math.random() * available.length
+      );
+
+    const row =
+      available[randomIndex];
+
+
+    const so =
+      Number(
+        sheet
+          .getRange(row, 1)
+          .getValue()
+      );
+
+
+    // ====================================
+    // GHI NHẬN
+    // ====================================
+    sheet
+      .getRange(row, 2, 1, 3)
+      .setValues([[
+        "Đã dùng",
+        new Date(),
+        clientId
+      ]]);
+
+
+    SpreadsheetApp.flush();
+
+
+    // ====================================
+    // TRẢ KẾT QUẢ
+    // ====================================
+    return traVe({
+
+      success: true,
+
+      so: so,
+
+      daCo: false,
+
+      message: "Nhận số thành công"
+
+    }, callback);
+
+
+  } catch (error) {
+
+    return traVe({
+
+      success: false,
+
+      message: error.message
+
+    }, callback);
+
+
+  } finally {
+
+    lock.releaseLock();
+
+  }
 
 }
 
-</script>
 
-</body>
-</html>
+// ========================================
+// TRẢ JSON / JSONP
+// ========================================
+function traVe(data, callback) {
+
+  const json =
+    JSON.stringify(data);
+
+
+  if (callback) {
+
+    return ContentService
+
+      .createTextOutput(
+        callback + "(" + json + ");"
+      )
+
+      .setMimeType(
+        ContentService.MimeType.JAVASCRIPT
+      );
+
+  }
+
+
+  return ContentService
+
+    .createTextOutput(json)
+
+    .setMimeType(
+      ContentService.MimeType.JSON
+    );
+
+}
