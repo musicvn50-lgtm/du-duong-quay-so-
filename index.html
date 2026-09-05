@@ -1,338 +1,664 @@
-const SHEET_ID = "1aKuk2cEMV9ykDzRqf0mol-jN2Qd7hQa2ox738smF-BM";
-const SHEET_NAME = "Sheet1";
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>DU DƯƠNG - Quay số</title>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
 
-// =====================================================
-// LẤY SHEET
-// =====================================================
+<style>
 
-function getSheet() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+* {
+  box-sizing: border-box;
+}
 
-  let sheet = ss.getSheetByName(SHEET_NAME);
+body {
+  margin: 0;
+  min-height: 100vh;
 
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: #f6efdc;
+
+  font-family: Arial, sans-serif;
+}
+
+
+.card {
+
+  width: 92%;
+  max-width: 500px;
+
+  padding: 45px 30px;
+
+  background: #fffdf8;
+
+  border-radius: 28px;
+
+  text-align: center;
+
+  box-shadow:
+    0 15px 45px rgba(60,40,20,.15);
+}
+
+
+.title {
+
+  font-size: 42px;
+
+  font-weight: 900;
+
+  color: #2e241d;
+
+  margin-bottom: 8px;
+}
+
+
+.subtitle {
+
+  font-size: 17px;
+
+  font-weight: bold;
+
+  color: #98583d;
+}
+
+
+.number {
+
+  height: 130px;
+
+  margin: 45px 0 30px;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  font-size: 100px;
+
+  font-weight: 900;
+
+  color: #4b2d20;
+}
+
+
+.rolling {
+
+  animation:
+    rolling .08s infinite alternate;
+}
+
+
+@keyframes rolling {
+
+  from {
+    transform: scale(1);
   }
 
-  return sheet;
+  to {
+    transform: scale(1.08);
+  }
+
+}
+
+
+button {
+
+  border: none;
+
+  padding: 17px 45px;
+
+  border-radius: 50px;
+
+  background: #837c75;
+
+  color: white;
+
+  font-size: 20px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+
+button:hover {
+  transform: scale(1.03);
+}
+
+
+button:disabled {
+
+  opacity: .6;
+
+  cursor: not-allowed;
+}
+
+
+.status {
+
+  min-height: 25px;
+
+  margin-top: 20px;
+
+  color: #8b6b57;
+
+  font-size: 15px;
+}
+
+
+.error {
+  color: #b33;
+}
+
+
+.barcode {
+
+  margin-top: 25px;
+
+  min-height: 90px;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+}
+
+
+.note {
+
+  margin-top: 20px;
+
+  color: #aaa;
+
+  font-size: 12px;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="card">
+
+
+  <div class="title">
+    DU DƯƠNG
+  </div>
+
+
+  <div class="subtitle">
+    SỐ MAY MẮN 1 – 100
+  </div>
+
+
+  <div
+    id="number"
+    class="number">
+
+    ?
+
+  </div>
+
+
+  <button
+    id="button"
+    onclick="quaySo()">
+
+    QUAY SỐ
+
+  </button>
+
+
+  <div
+    id="status"
+    class="status">
+
+    Bạn chưa quay số
+
+  </div>
+
+
+  <div class="barcode">
+
+    <svg id="barcode"></svg>
+
+  </div>
+
+
+  <div class="note">
+
+    Mỗi thiết bị chỉ được quay một lần
+
+  </div>
+
+
+</div>
+
+
+
+<script>
+
+
+// =====================================================
+// URL APPS SCRIPT CỦA DU DƯƠNG
+// =====================================================
+
+const API_URL =
+"https://script.google.com/macros/s/AKfycbzxRhqRe1hXw6g159LdhTaI0MgS-cEMvs5-TVyWJ050f-r8ZGLRF13sva_rGkD6zSFT/exec";
+
+
+// =====================================================
+// TẠO MÃ THIẾT BỊ
+// =====================================================
+
+function getClientId() {
+
+  let id =
+    localStorage.getItem(
+      "DU_DUONG_CLIENT_ID"
+    );
+
+
+  if (!id) {
+
+    id =
+      "DD-" +
+      Date.now() +
+      "-" +
+      Math.random()
+        .toString(36)
+        .substring(2, 10);
+
+
+    localStorage.setItem(
+      "DU_DUONG_CLIENT_ID",
+      id
+    );
+
+  }
+
+
+  return id;
 }
 
 
 // =====================================================
-// TẠO BẢNG 100 SỐ
-// CHỈ CHẠY 1 LẦN
+// GỌI API
 // =====================================================
 
-function khoiTaoBang() {
-
-  const sheet = getSheet();
-
-  sheet.clear();
-
-  sheet.getRange(1, 1, 1, 4).setValues([[
-    "Số",
-    "Trạng thái",
-    "Thời gian",
-    "Mã lượt"
-  ]]);
-
-  const rows = [];
-
-  for (let i = 1; i <= 100; i++) {
-
-    rows.push([
-      i,
-      "Chưa dùng",
-      "",
-      ""
-    ]);
-
-  }
-
-  sheet.getRange(2, 1, 100, 4)
-    .setValues(rows);
-
-  sheet.getRange(1, 1, 1, 4)
-    .setFontWeight("bold");
-
-  sheet.autoResizeColumns(1, 4);
-}
+function goiAPI(clientId, callback) {
 
 
-// =====================================================
-// API
-// =====================================================
-
-function doGet(e) {
-
-  let callback = "";
-
-  try {
-
-    const clientId =
-      e &&
-      e.parameter &&
-      e.parameter.clientId
-        ? String(e.parameter.clientId)
-        : "";
-
-    callback =
-      e &&
-      e.parameter &&
-      e.parameter.callback
-        ? String(e.parameter.callback)
-        : "";
+  const callbackName =
+    "duDuong_" +
+    Date.now() +
+    "_" +
+    Math.floor(
+      Math.random() * 100000
+    );
 
 
-    // Không có mã lượt
-    if (!clientId) {
+  const script =
+    document.createElement("script");
 
-      return traVe({
-        success: false,
-        message: "Thiếu mã lượt"
-      }, callback);
+
+  let finished = false;
+
+
+  function ketThuc(data) {
+
+    if (finished) {
+      return;
+    }
+
+    finished = true;
+
+
+    clearTimeout(timeout);
+
+
+    delete window[callbackName];
+
+
+    if (script.parentNode) {
+
+      script.parentNode.removeChild(
+        script
+      );
 
     }
 
 
-    // Khóa để 2 người không lấy cùng 1 số
-    const lock =
-      LockService.getScriptLock();
+    callback(data);
 
-    lock.waitLock(30000);
+  }
 
 
-    try {
+  window[callbackName] =
+    function(data) {
 
-      const sheet = getSheet();
+      ketThuc(data);
 
-      const lastRow =
-        sheet.getLastRow();
-
-
-      if (lastRow < 2) {
-
-        return traVe({
-          success: false,
-          message: "Chưa tạo bảng 100 số"
-        }, callback);
-
-      }
+    };
 
 
-      // Đọc A:D
-      const data =
-        sheet
-          .getRange(
-            2,
-            1,
-            lastRow - 1,
-            4
-          )
-          .getValues();
+  script.src =
+    API_URL +
+    "?clientId=" +
+    encodeURIComponent(clientId) +
+    "&callback=" +
+    encodeURIComponent(callbackName);
 
 
-      // =================================================
-      // KIỂM TRA MÃ LƯỢT ĐÃ QUAY
-      // =================================================
+  script.onerror =
+    function() {
 
-      for (let i = 0; i < data.length; i++) {
+      ketThuc({
 
-        const so =
-          data[i][0];
+        success: false,
 
-        const trangThai =
-          String(data[i][1]);
+        message:
+          "Không thể kết nối với hệ thống"
 
-        const maLuot =
-          String(data[i][3]);
+      });
 
-
-        if (
-          trangThai === "Đã dùng" &&
-          maLuot === clientId
-        ) {
-
-          return traVe({
-
-            success: true,
-
-            ma:
-              String(so)
-                .padStart(3, "0"),
-
-            daCo: true,
-
-            message:
-              "Mã lượt đã nhận số trước đó"
-
-          }, callback);
-
-        }
-
-      }
+    };
 
 
-      // =================================================
-      // TÌM SỐ CHƯA DÙNG
-      // =================================================
+  const timeout =
+    setTimeout(function() {
 
-      const available = [];
+      ketThuc({
 
+        success: false,
 
-      for (let i = 0; i < data.length; i++) {
+        message:
+          "Hệ thống phản hồi quá lâu"
 
-        if (
-          String(data[i][1])
-          !== "Đã dùng"
-        ) {
+      });
 
-          available.push(i + 2);
-
-        }
-
-      }
+    }, 15000);
 
 
-      // =================================================
-      // HẾT SỐ
-      // =================================================
+  document.body.appendChild(
+    script
+  );
 
-      if (available.length === 0) {
-
-        return traVe({
-
-          success: false,
-
-          message:
-            "Đã hết 100 số may mắn"
-
-        }, callback);
-
-      }
+}
 
 
-      // =================================================
-      // CHỌN SỐ
-      // =================================================
+// =====================================================
+// HIỂN THỊ KẾT QUẢ
+// =====================================================
 
-      const randomIndex =
+function hienThiSo(number, daCo) {
+
+
+  const numberBox =
+    document.getElementById(
+      "number"
+    );
+
+
+  const button =
+    document.getElementById(
+      "button"
+    );
+
+
+  const status =
+    document.getElementById(
+      "status"
+    );
+
+
+  const ma =
+    String(number)
+      .padStart(3, "0");
+
+
+  numberBox.innerText =
+    ma;
+
+
+  button.innerText =
+    "ĐÃ QUAY";
+
+
+  button.disabled =
+    true;
+
+
+  if (daCo) {
+
+    status.innerText =
+      "Bạn đã quay số này rồi";
+
+  } else {
+
+    status.innerText =
+      "🎉 Số may mắn của bạn là " +
+      ma;
+
+  }
+
+
+  taoBarcode(ma);
+
+}
+
+
+// =====================================================
+// QUAY SỐ
+// =====================================================
+
+function quaySo() {
+
+
+  const button =
+    document.getElementById(
+      "button"
+    );
+
+
+  const numberBox =
+    document.getElementById(
+      "number"
+    );
+
+
+  const status =
+    document.getElementById(
+      "status"
+    );
+
+
+  button.disabled = true;
+
+
+  status.classList.remove(
+    "error"
+  );
+
+
+  status.innerText =
+    "Đang quay số...";
+
+
+  numberBox.classList.add(
+    "rolling"
+  );
+
+
+  // Hiệu ứng số chạy
+  let count = 0;
+
+
+  const animation =
+    setInterval(function() {
+
+
+      const random =
         Math.floor(
-          Math.random() *
-          available.length
-        );
+          Math.random() * 100
+        ) + 1;
 
 
-      const row =
-        available[randomIndex];
-
-
-      const so =
-        Number(
-          sheet
-            .getRange(row, 1)
-            .getValue()
-        );
-
-
-      const ma =
-        String(so)
+      numberBox.innerText =
+        String(random)
           .padStart(3, "0");
 
 
-      // =================================================
-      // GHI VÀO SHEET
-      // =================================================
-
-      sheet
-        .getRange(row, 2)
-        .setValue("Đã dùng");
+      count++;
 
 
-      sheet
-        .getRange(row, 3)
-        .setValue(new Date());
+      if (count >= 30) {
 
 
-      sheet
-        .getRange(row, 4)
-        .setValue(clientId);
+        clearInterval(
+          animation
+        );
 
 
-      SpreadsheetApp.flush();
+        numberBox.classList.remove(
+          "rolling"
+        );
 
 
-      // =================================================
-      // TRẢ KẾT QUẢ
-      // =================================================
+        // =========================================
+        // LẤY SỐ THẬT TỪ GOOGLE SHEET
+        // =========================================
 
-      return traVe({
-
-        success: true,
-
-        ma: ma,
-
-        daCo: false,
-
-        message:
-          "Nhận mã thành công"
-
-      }, callback);
+        goiAPI(
+          getClientId(),
+          function(data) {
 
 
-    } finally {
+            if (
+              !data ||
+              !data.success
+            ) {
 
-      lock.releaseLock();
+
+              button.disabled =
+                false;
+
+
+              status.classList.add(
+                "error"
+              );
+
+
+              status.innerText =
+                data &&
+                data.message
+                  ? data.message
+                  : "Không thể kết nối với hệ thống";
+
+
+              return;
+
+            }
+
+
+            hienThiSo(
+              data.ma,
+              data.daCo
+            );
+
+          }
+        );
+
+      }
+
+    }, 70);
+
+}
+
+
+// =====================================================
+// BARCODE
+// =====================================================
+
+function taoBarcode(number) {
+
+
+  JsBarcode(
+    "#barcode",
+    String(number),
+    {
+
+      format: "CODE128",
+
+      width: 3,
+
+      height: 70,
+
+      displayValue: true,
+
+      fontSize: 18,
+
+      margin: 5
 
     }
-
-
-  } catch (error) {
-
-    return traVe({
-
-      success: false,
-
-      message:
-        error.message
-
-    }, callback);
-
-  }
+  );
 
 }
 
 
 // =====================================================
-// JSON / JSONP
+// KHI MỞ TRANG
+// KIỂM TRA MÁY ĐÃ QUAY CHƯA
 // =====================================================
 
-function traVe(data, callback) {
-
-  const json =
-    JSON.stringify(data);
+function kiemTraDaQuay() {
 
 
-  if (callback) {
-
-    return ContentService
-      .createTextOutput(
-        callback +
-        "(" +
-        json +
-        ");"
-      )
-      .setMimeType(
-        ContentService.MimeType.JAVASCRIPT
-      );
-
-  }
+  goiAPI(
+    getClientId(),
+    function(data) {
 
 
-  return ContentService
-    .createTextOutput(json)
-    .setMimeType(
-      ContentService.MimeType.JSON
-    );
+      if (
+        data &&
+        data.success &&
+        data.daCo
+      ) {
+
+        hienThiSo(
+          data.ma,
+          true
+        );
+
+      }
+
+    }
+  );
+
 }
+
+
+kiemTraDaQuay();
+
+</script>
+
+
+</body>
+
+</html>
