@@ -1,271 +1,271 @@
-const SHEET_ID = "1aKuk2cEMV9ykDzRqf0mol-jN2Qd7hQa2ox738smF-BM";
-const SHEET_NAME = "Sheet1";
+// ==========================================
+// DU DUONG - QUAY SO 1 -> 100
+// KHONG CAN GOOGLE SHEET
+// ==========================================
+
+const TOTAL_NUMBERS = 100;
 
 
-// ========================================
-// LẤY SHEET
-// ========================================
-function getSheet() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  let sheet = ss.getSheetByName(SHEET_NAME);
+// ==========================================
+// KHỞI TẠO / RESET 100 SỐ
+// CHỈ CHẠY HÀM NÀY 1 LẦN KHI BẮT ĐẦU
+// ==========================================
+function khoiTao() {
 
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
+  const props = PropertiesService.getScriptProperties();
+
+  const numbers = [];
+
+  for (let i = 1; i <= TOTAL_NUMBERS; i++) {
+    numbers.push(i);
   }
 
-  return sheet;
+  const state = {
+    available: numbers,
+    used: {},
+    devices: {}
+  };
+
+  props.setProperty(
+    "DU_DUONG_STATE",
+    JSON.stringify(state)
+  );
+
+  return ContentService
+    .createTextOutput(
+      JSON.stringify({
+        success: true,
+        message: "Đã tạo 100 số"
+      })
+    )
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 
-// ========================================
-// KHỞI TẠO 100 SỐ
-// ========================================
-function khoiTaoBang() {
-
-  const sheet = getSheet();
-
-  sheet.clear();
-
-  sheet.getRange(1, 1, 1, 4).setValues([[
-    "Số",
-    "Trạng thái",
-    "Thời gian",
-    "Mã lượt"
-  ]]);
-
-  const data = [];
-
-  for (let i = 1; i <= 100; i++) {
-
-    data.push([
-      i,
-      "Chưa dùng",
-      "",
-      ""
-    ]);
-
-  }
-
-  sheet.getRange(2, 1, 100, 4).setValues(data);
-
-  sheet.getRange("A1:D1")
-    .setFontWeight("bold");
-
-  sheet.autoResizeColumns(1, 4);
-}
-
-
-// ========================================
-// QUAY SỐ
-// ========================================
+// ==========================================
+// API QUAY SỐ
+// ==========================================
 function doGet(e) {
-
-  const callback =
-    e &&
-    e.parameter &&
-    e.parameter.callback
-      ? String(e.parameter.callback)
-      : "";
-
-  let clientId =
-    e &&
-    e.parameter &&
-    e.parameter.clientId
-      ? String(e.parameter.clientId).trim()
-      : "";
-
-
-  // ======================================
-  // NẾU KHÔNG CÓ MÃ THIẾT BỊ
-  // ======================================
-  if (!clientId) {
-
-    return traVe({
-      success: false,
-      message: "Thiếu mã thiết bị"
-    }, callback);
-
-  }
-
-
-  // ======================================
-  // KHÓA ĐỂ 100 NGƯỜI QUAY CÙNG LÚC
-  // KHÔNG BAO GIỜ TRÙNG SỐ
-  // ======================================
-  const lock = LockService.getScriptLock();
-
-  lock.waitLock(30000);
 
   try {
 
-    const sheet = getSheet();
+    const clientId =
+      e &&
+      e.parameter &&
+      e.parameter.clientId
+        ? String(e.parameter.clientId).trim()
+        : "";
 
-    const lastRow = sheet.getLastRow();
+    const callback =
+      e &&
+      e.parameter &&
+      e.parameter.callback
+        ? String(e.parameter.callback)
+        : "";
 
-    if (lastRow < 101) {
 
-      return traVe({
+    // --------------------------------------
+    // KHÔNG CÓ MÃ THIẾT BỊ
+    // --------------------------------------
+    if (!clientId) {
+
+      return response({
         success: false,
-        message: "Chưa có đủ 100 số"
+        message: "Thiếu mã thiết bị"
       }, callback);
 
     }
 
 
-    // ====================================
-    // KIỂM TRA THIẾT BỊ ĐÃ QUAY
-    // ====================================
-    const maLuotData =
-      sheet
-        .getRange(2, 4, 100, 1)
-        .getValues();
+    // --------------------------------------
+    // KHÓA TOÀN BỘ QUÁ TRÌNH QUAY
+    // --------------------------------------
+    const lock =
+      LockService.getScriptLock();
+
+    lock.waitLock(30000);
 
 
-    for (let i = 0; i < maLuotData.length; i++) {
+    try {
 
-      if (
-        maLuotData[i][0] &&
-        String(maLuotData[i][0]) === clientId
-      ) {
+      const props =
+        PropertiesService
+          .getScriptProperties();
 
-        const so =
-          sheet
-            .getRange(i + 2, 1)
-            .getValue();
 
-        return traVe({
-          success: true,
-          so: Number(so),
-          daCo: true,
-          message: "Thiết bị đã quay trước đó"
+      let raw =
+        props.getProperty("DU_DUONG_STATE");
+
+
+      // ------------------------------------
+      // CHƯA KHỞI TẠO
+      // ------------------------------------
+      if (!raw) {
+
+        return response({
+          success: false,
+          message: "Hệ thống chưa khởi tạo"
         }, callback);
 
       }
 
-    }
+
+      const state =
+        JSON.parse(raw);
 
 
-    // ====================================
-    // LẤY DANH SÁCH SỐ CHƯA DÙNG
-    // ====================================
-    const trangThai =
-      sheet
-        .getRange(2, 2, 100, 1)
-        .getValues();
+      // ------------------------------------
+      // MÁY NÀY ĐÃ QUAY
+      // ------------------------------------
+      if (
+        state.devices &&
+        state.devices[clientId] !== undefined
+      ) {
 
+        const oldNumber =
+          state.devices[clientId];
 
-    const available = [];
+        return response({
 
-    for (let i = 0; i < 100; i++) {
+          success: true,
 
-      if (trangThai[i][0] !== "Đã dùng") {
-        available.push(i + 2);
+          so: Number(oldNumber),
+
+          daCo: true,
+
+          message: "Thiết bị đã quay trước đó"
+
+        }, callback);
+
       }
 
-    }
+
+      // ------------------------------------
+      // HẾT 100 SỐ
+      // ------------------------------------
+      if (
+        !state.available ||
+        state.available.length === 0
+      ) {
+
+        return response({
+
+          success: false,
+
+          message: "Đã hết 100 số"
+
+        }, callback);
+
+      }
 
 
-    // ====================================
-    // HẾT SỐ
-    // ====================================
-    if (available.length === 0) {
+      // ------------------------------------
+      // CHỌN NGẪU NHIÊN
+      // ------------------------------------
+      const randomIndex =
+        Math.floor(
+          Math.random() *
+          state.available.length
+        );
 
-      return traVe({
-        success: false,
-        message: "Đã hết 100 số"
+
+      const number =
+        state.available[randomIndex];
+
+
+      // ------------------------------------
+      // XÓA SỐ KHỎI KHO
+      // ------------------------------------
+      state.available.splice(
+        randomIndex,
+        1
+      );
+
+
+      // ------------------------------------
+      // GHI SỐ ĐÃ DÙNG
+      // ------------------------------------
+      if (!state.used) {
+        state.used = {};
+      }
+
+      state.used[number] = true;
+
+
+      // ------------------------------------
+      // GHI MÁY → SỐ
+      // ------------------------------------
+      if (!state.devices) {
+        state.devices = {};
+      }
+
+      state.devices[clientId] =
+        number;
+
+
+      // ------------------------------------
+      // LƯU LẠI
+      // ------------------------------------
+      props.setProperty(
+        "DU_DUONG_STATE",
+        JSON.stringify(state)
+      );
+
+
+      // ------------------------------------
+      // TRẢ KẾT QUẢ
+      // ------------------------------------
+      return response({
+
+        success: true,
+
+        so: Number(number),
+
+        daCo: false,
+
+        message: "Nhận số thành công"
+
       }, callback);
 
+
+    } finally {
+
+      lock.releaseLock();
+
     }
-
-
-    // ====================================
-    // CHỌN NGẪU NHIÊN
-    // ====================================
-    const randomIndex =
-      Math.floor(
-        Math.random() * available.length
-      );
-
-    const row =
-      available[randomIndex];
-
-
-    const so =
-      Number(
-        sheet
-          .getRange(row, 1)
-          .getValue()
-      );
-
-
-    // ====================================
-    // GHI NHẬN
-    // ====================================
-    sheet
-      .getRange(row, 2, 1, 3)
-      .setValues([[
-        "Đã dùng",
-        new Date(),
-        clientId
-      ]]);
-
-
-    SpreadsheetApp.flush();
-
-
-    // ====================================
-    // TRẢ KẾT QUẢ
-    // ====================================
-    return traVe({
-
-      success: true,
-
-      so: so,
-
-      daCo: false,
-
-      message: "Nhận số thành công"
-
-    }, callback);
 
 
   } catch (error) {
 
-    return traVe({
+    return response({
 
       success: false,
 
       message: error.message
 
-    }, callback);
-
-
-  } finally {
-
-    lock.releaseLock();
+    }, "");
 
   }
 
 }
 
 
-// ========================================
-// TRẢ JSON / JSONP
-// ========================================
-function traVe(data, callback) {
+// ==========================================
+// JSON / JSONP
+// ==========================================
+function response(data, callback) {
 
   const json =
     JSON.stringify(data);
 
 
+  // JSONP
   if (callback) {
 
     return ContentService
-
       .createTextOutput(
         callback + "(" + json + ");"
       )
-
       .setMimeType(
         ContentService.MimeType.JAVASCRIPT
       );
@@ -273,12 +273,10 @@ function traVe(data, callback) {
   }
 
 
+  // JSON
   return ContentService
-
     .createTextOutput(json)
-
     .setMimeType(
       ContentService.MimeType.JSON
     );
-
 }
