@@ -1,588 +1,333 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>DU DƯƠNG - Quay số</title>
-
-  <!-- Thư viện barcode -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #f6efdc;
-      font-family: Arial, sans-serif;
-    }
-
-    .card {
-      width: 92%;
-      max-width: 500px;
-      padding: 45px 30px;
-      background: #fffdf8;
-      border-radius: 28px;
-      text-align: center;
-      box-shadow: 0 15px 45px rgba(60,40,20,.15);
-    }
-
-    .title {
-      font-size: 42px;
-      font-weight: 900;
-      color: #2e241d;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      font-size: 17px;
-      font-weight: bold;
-      color: #98583d;
-    }
-
-    .number {
-      height: 130px;
-      margin: 45px 0 30px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 100px;
-      font-weight: 900;
-      color: #4b2d20;
-    }
-
-    .rolling {
-      animation: rolling .08s infinite alternate;
-    }
-
-    @keyframes rolling {
-      from {
-        transform: scale(1);
-      }
-
-      to {
-        transform: scale(1.08);
-      }
-    }
-
-    button {
-      border: none;
-      padding: 17px 45px;
-      border-radius: 50px;
-      background: #837c75;
-      color: white;
-      font-size: 20px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:hover {
-      transform: scale(1.03);
-    }
-
-    button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
-
-    .status {
-      min-height: 25px;
-      margin-top: 20px;
-      color: #8b6b57;
-      font-size: 15px;
-    }
-
-    .barcode {
-      margin-top: 25px;
-      min-height: 90px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .note {
-      margin-top: 20px;
-      color: #aaa;
-      font-size: 12px;
-    }
-
-    .error {
-      color: #b33a3a;
-    }
-  </style>
-</head>
-
-<body>
-
-  <div class="card">
-
-    <div class="title">
-      DU DƯƠNG
-    </div>
-
-    <div class="subtitle">
-      SỐ MAY MẮN 1 – 100
-    </div>
-
-    <div id="number" class="number">
-      ?
-    </div>
-
-    <button id="button" onclick="quaySo()">
-      QUAY SỐ
-    </button>
-
-    <div id="status" class="status">
-      Bạn chưa quay số
-    </div>
-
-    <div class="barcode">
-      <svg id="barcode"></svg>
-    </div>
-
-    <div class="note">
-      Mỗi thiết bị chỉ được quay một lần
-    </div>
-
-  </div>
+const SHEET_ID = "1aKuk2cEMV9ykDzRqf0mol-jN2Qd7hQa2ox738smF-BM";
+const SHEET_NAME = "Sheet1";
 
 
-<script>
+// ========================================
+// LẤY SHEET
+// ========================================
 
-/* =====================================================
-   GOOGLE APPS SCRIPT - URL MỚI
-   ===================================================== */
+function getSheet() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sheet = ss.getSheetByName(SHEET_NAME);
 
-const API_URL =
-"https://script.google.com/macros/s/AKfycbwmS3InNYS0ssoCVbwlfmREMcH2Gv15PllLbVoAbZYTEvRlyzyKRsbF-Svz1kCHHHKJ/exec";
-
-
-/* =====================================================
-   STORAGE
-   ===================================================== */
-
-const NUMBER_KEY =
-"DU_DUONG_SO_MAY_NAY";
-
-const DEVICE_KEY =
-"DU_DUONG_DEVICE_ID";
-
-
-/* =====================================================
-   TẠO MÃ THIẾT BỊ
-   ===================================================== */
-
-function getDeviceId() {
-
-  let deviceId =
-    localStorage.getItem(DEVICE_KEY);
-
-  if (!deviceId) {
-
-    deviceId =
-      "device_" +
-      Date.now() +
-      "_" +
-      Math.random()
-        .toString(36)
-        .substring(2, 12);
-
-    localStorage.setItem(
-      DEVICE_KEY,
-      deviceId
-    );
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
   }
 
-  return deviceId;
+  return sheet;
 }
 
 
-/* =====================================================
-   KIỂM TRA MÁY NÀY ĐÃ CÓ SỐ CHƯA
-   ===================================================== */
+// ========================================
+// TẠO 100 MÃ
+// CHỈ CHẠY 1 LẦN
+// ========================================
 
-function kiemTraSoCu() {
+function khoiTaoBang() {
 
-  const oldNumber =
-    localStorage.getItem(NUMBER_KEY);
+  const sheet = getSheet();
 
-  if (oldNumber) {
+  sheet.clear();
 
-    hienThiSoCu(oldNumber);
+  sheet.getRange(1, 1, 1, 4).setValues([[
+    "Mã",
+    "Trạng thái",
+    "Thời gian",
+    "Mã thiết bị"
+  ]]);
 
-  }
-}
+  const rows = [];
 
-
-/* =====================================================
-   HIỆN SỐ ĐÃ CÓ
-   ===================================================== */
-
-function hienThiSoCu(number) {
-
-  const numberBox =
-    document.getElementById("number");
-
-  const button =
-    document.getElementById("button");
-
-  const status =
-    document.getElementById("status");
-
-  numberBox.innerText =
-    number;
-
-  status.innerText =
-    "Bạn đã quay số này rồi";
-
-  button.innerText =
-    "ĐÃ QUAY";
-
-  button.disabled =
-    true;
-
-  taoBarcode(number);
-}
-
-
-/* =====================================================
-   BẤM QUAY SỐ
-   ===================================================== */
-
-function quaySo() {
-
-  // Kiểm tra localStorage trước
-
-  const oldNumber =
-    localStorage.getItem(NUMBER_KEY);
-
-  if (oldNumber) {
-
-    hienThiSoCu(oldNumber);
-
-    return;
-
+  for (let i = 1; i <= 100; i++) {
+    rows.push([
+      String(i).padStart(3, "0"),
+      "Chưa dùng",
+      "",
+      ""
+    ]);
   }
 
+  sheet
+    .getRange(2, 1, 100, 4)
+    .setValues(rows);
 
-  const button =
-    document.getElementById("button");
+  sheet
+    .getRange(1, 1, 1, 4)
+    .setFontWeight("bold");
 
-  const numberBox =
-    document.getElementById("number");
-
-  const status =
-    document.getElementById("status");
-
-
-  button.disabled =
-    true;
-
-  numberBox.classList.add("rolling");
-
-  status.innerText =
-    "Đang quay số...";
-
-
-  /*
-    Phần dưới chỉ tạo hiệu ứng.
-    SỐ THẬT sẽ lấy từ Google Sheet.
-  */
-
-  let count = 0;
-
-  const animation =
-    setInterval(function() {
-
-      const fakeNumber =
-        Math.floor(
-          Math.random() * 100
-        ) + 1;
-
-      numberBox.innerText =
-        String(fakeNumber)
-          .padStart(3, "0");
-
-      count++;
-
-
-      if (count >= 30) {
-
-        clearInterval(animation);
-
-        numberBox.classList.remove(
-          "rolling"
-        );
-
-        status.innerText =
-          "Đang xác nhận số...";
-
-        layMaTuGoogle();
-
-      }
-
-    }, 70);
-
+  sheet.autoResizeColumns(1, 4);
 }
 
 
-/* =====================================================
-   GỌI GOOGLE APPS SCRIPT
-   ===================================================== */
-
-function layMaTuGoogle() {
-
-  const deviceId =
-    encodeURIComponent(
-      getDeviceId()
-    );
-
-
-  /*
-    Dùng JSONP để tránh lỗi CORS
-    khi chạy trên GitHub Pages.
-  */
-
-  const callbackName =
-    "duDuongCallback_" +
-    Date.now();
-
-
-  const script =
-    document.createElement("script");
-
-
-  let finished = false;
-
-
-  const timeout =
-    setTimeout(function() {
-
-      if (finished) return;
-
-      finished = true;
-
-      script.remove();
-
-      delete window[callbackName];
-
-      hienThiLoi(
-        "Không thể kết nối với hệ thống"
-      );
-
-    }, 20000);
-
-
-  window[callbackName] =
-    function(data) {
-
-      if (finished) return;
-
-      finished = true;
-
-      clearTimeout(timeout);
-
-      script.remove();
-
-      delete window[callbackName];
-
-
-      console.log(
-        "Google trả về:",
-        data
-      );
-
-
-      if (!data || !data.success) {
-
-        hienThiLoi(
-          data && data.message
-            ? data.message
-            : "Không nhận được mã"
-        );
-
-        return;
-      }
-
-
-      /*
-        Đây là số thật lấy từ Google Sheet.
-      */
-
-      const number =
-        String(data.ma)
-          .padStart(3, "0");
-
-
-      /*
-        Lưu vào máy.
-      */
-
-      localStorage.setItem(
-        NUMBER_KEY,
-        number
-      );
-
-
-      /*
-        Hiện kết quả.
-      */
-
-      hienThiSoMoi(
-        number,
-        data.daCo
-      );
-
-    };
-
-
-  /*
-    Gọi Apps Script
-  */
-
-  script.src =
-    API_URL +
-    "?clientId=" +
-    deviceId +
-    "&callback=" +
-    callbackName;
-
-
-  document.body.appendChild(script);
-
-}
-
-
-/* =====================================================
-   HIỆN SỐ MỚI
-   ===================================================== */
-
-function hienThiSoMoi(
-  number,
-  daCo
-) {
-
-  const numberBox =
-    document.getElementById("number");
-
-  const button =
-    document.getElementById("button");
-
-  const status =
-    document.getElementById("status");
-
-
-  numberBox.innerText =
-    number;
-
-
-  if (daCo) {
-
-    status.innerText =
-      "Bạn đã quay số này rồi";
-
-  } else {
-
-    status.innerText =
-      "🎉 Số may mắn của bạn là " +
-      number;
-
-  }
-
-
-  button.innerText =
-    "ĐÃ QUAY";
-
-  button.disabled =
-    true;
-
-
-  taoBarcode(number);
-
-}
-
-
-/* =====================================================
-   TẠO BARCODE
-   ===================================================== */
-
-function taoBarcode(number) {
+// ========================================
+// API QUAY SỐ
+// ========================================
+
+function doGet(e) {
 
   try {
 
-    JsBarcode(
-      "#barcode",
-      String(number),
-      {
-        format: "CODE128",
-        width: 3,
-        height: 70,
-        displayValue: true,
-        fontSize: 18,
-        margin: 5
+    const clientId =
+      e &&
+      e.parameter &&
+      e.parameter.clientId
+        ? String(e.parameter.clientId)
+        : "";
+
+    const callback =
+      e &&
+      e.parameter &&
+      e.parameter.callback
+        ? String(e.parameter.callback)
+        : "";
+
+
+    if (!clientId) {
+
+      return traVe({
+        success: false,
+        message: "Thiếu mã thiết bị"
+      }, callback);
+
+    }
+
+
+    const lock =
+      LockService.getScriptLock();
+
+    lock.waitLock(30000);
+
+
+    try {
+
+      const sheet = getSheet();
+
+      const lastRow =
+        sheet.getLastRow();
+
+
+      if (lastRow < 2) {
+
+        return traVe({
+          success: false,
+          message: "Chưa tạo 100 mã"
+        }, callback);
+
       }
-    );
+
+
+      const data =
+        sheet
+          .getRange(
+            2,
+            1,
+            lastRow - 1,
+            4
+          )
+          .getValues();
+
+
+      // ==================================
+      // KIỂM TRA THIẾT BỊ ĐÃ QUAY
+      // ==================================
+
+      for (
+        let i = 0;
+        i < data.length;
+        i++
+      ) {
+
+        const ma =
+          String(data[i][0])
+            .padStart(3, "0");
+
+        const trangThai =
+          String(data[i][1]);
+
+        const thietBi =
+          String(data[i][3] || "");
+
+
+        if (
+          trangThai === "Đã dùng" &&
+          thietBi === clientId
+        ) {
+
+          return traVe({
+
+            success: true,
+
+            ma: ma,
+
+            daCo: true,
+
+            message:
+              "Thiết bị đã nhận mã trước đó"
+
+          }, callback);
+
+        }
+
+      }
+
+
+      // ==================================
+      // TÌM MÃ CHƯA DÙNG
+      // ==================================
+
+      const available = [];
+
+
+      for (
+        let i = 0;
+        i < data.length;
+        i++
+      ) {
+
+        if (
+          String(data[i][1]) !== "Đã dùng"
+        ) {
+
+          available.push(i + 2);
+
+        }
+
+      }
+
+
+      // ==================================
+      // HẾT MÃ
+      // ==================================
+
+      if (available.length === 0) {
+
+        return traVe({
+
+          success: false,
+
+          message:
+            "Đã hết 100 mã may mắn"
+
+        }, callback);
+
+      }
+
+
+      // ==================================
+      // CHỌN MÃ
+      // ==================================
+
+      const randomIndex =
+        Math.floor(
+          Math.random() *
+          available.length
+        );
+
+
+      const row =
+        available[randomIndex];
+
+
+      const ma =
+        String(
+          sheet
+            .getRange(row, 1)
+            .getValue()
+        )
+        .padStart(3, "0");
+
+
+      // ==================================
+      // ĐÁNH DẤU ĐÃ DÙNG
+      // ==================================
+
+      sheet
+        .getRange(row, 2)
+        .setValue("Đã dùng");
+
+      sheet
+        .getRange(row, 3)
+        .setValue(new Date());
+
+      sheet
+        .getRange(row, 4)
+        .setValue(clientId);
+
+
+      SpreadsheetApp.flush();
+
+
+      // ==================================
+      // TRẢ KẾT QUẢ
+      // ==================================
+
+      return traVe({
+
+        success: true,
+
+        ma: ma,
+
+        daCo: false,
+
+        message:
+          "Nhận mã thành công"
+
+      }, callback);
+
+
+    } finally {
+
+      lock.releaseLock();
+
+    }
+
 
   } catch (error) {
 
-    console.error(
-      "Barcode error:",
-      error
-    );
+    return traVe({
+
+      success: false,
+
+      message:
+        error.message
+
+    });
 
   }
 
 }
 
 
-/* =====================================================
-   HIỆN LỖI
-   ===================================================== */
+// ========================================
+// JSON / JSONP
+// ========================================
 
-function hienThiLoi(message) {
+function traVe(data, callback) {
 
-  const numberBox =
-    document.getElementById("number");
-
-  const button =
-    document.getElementById("button");
-
-  const status =
-    document.getElementById("status");
+  const json =
+    JSON.stringify(data);
 
 
-  numberBox.classList.remove(
-    "rolling"
-  );
+  if (callback) {
 
-  numberBox.innerText =
-    "?";
+    return ContentService
+      .createTextOutput(
+        callback +
+        "(" +
+        json +
+        ");"
+      )
+      .setMimeType(
+        ContentService.MimeType.JAVASCRIPT
+      );
 
-  status.innerText =
-    "⚠️ " + message;
+  }
 
-  status.classList.add("error");
 
-  button.disabled =
-    false;
+  return ContentService
+    .createTextOutput(json)
+    .setMimeType(
+      ContentService.MimeType.JSON
+    );
 
 }
-
-
-/* =====================================================
-   CHẠY KHI MỞ TRANG
-   ===================================================== */
-
-kiemTraSoCu();
-
-</script>
-
-</body>
-</html>
