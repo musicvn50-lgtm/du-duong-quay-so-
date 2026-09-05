@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>DU DƯƠNG - Quay số</title>
+
+  <!-- Thư viện tạo barcode -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      background: #f6efdc;
+
+      font-family: Arial, sans-serif;
+    }
+
+    .card {
+      width: 92%;
+      max-width: 500px;
+
+      padding: 45px 30px;
+
+      background: #fffdf8;
+
+      border-radius: 28px;
+
+      text-align: center;
+
+      box-shadow:
+        0 15px 45px rgba(60,40,20,.15);
+    }
+
+    .title {
+      font-size: 42px;
+      font-weight: 900;
+
+      color: #2e241d;
+
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 17px;
+      font-weight: bold;
+
+      color: #98583d;
+    }
+
+    .number {
+      height: 130px;
+
+      margin: 45px 0 30px;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      font-size: 100px;
+      font-weight: 900;
+
+      color: #4b2d20;
+    }
+
+    .rolling {
+      animation: rolling .08s infinite alternate;
+    }
+
+    @keyframes rolling {
+      from {
+        transform: scale(1);
+      }
+
+      to {
+        transform: scale(1.08);
+      }
+    }
+
+    button {
+      border: none;
+
+      padding: 17px 45px;
+
+      border-radius: 50px;
+
+      background: #837c75;
+
+      color: white;
+
+      font-size: 20px;
+      font-weight: bold;
+
+      cursor: pointer;
+    }
+
+    button:hover {
+      transform: scale(1.03);
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      min-height: 25px;
+
+      margin-top: 20px;
+
+      color: #8b6b57;
+
+      font-size: 15px;
+    }
+
+    .barcode {
+      margin-top: 25px;
+
+      min-height: 90px;
+
+      display: flex;
+
+      justify-content: center;
+      align-items: center;
+    }
+
+    .note {
+      margin-top: 20px;
+
+      color: #aaa;
+
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+
+    <div class="title">
+      DU DƯƠNG
+    </div>
+
+    <div class="subtitle">
+      SỐ MAY MẮN 1 – 100
+    </div>
+
+
+    <div
+      id="number"
+      class="number">
+
+      ?
+
+    </div>
+
+
+    <button
+      id="button"
+      onclick="quaySo()">
+
+      QUAY SỐ
+
+    </button>
+
+
+    <div
+      id="status"
+      class="status">
+
+      Bạn chưa quay số
+
+    </div>
+
+
+    <div class="barcode">
+
+      <svg id="barcode"></svg>
+
+    </div>
+
+
+    <div class="note">
+      Mỗi thiết bị chỉ được quay một lần
+    </div>
+
+  </div>
+
+
+<script>
+
+  // =========================================
+  // TÊN LƯU TRỮ TRONG TRÌNH DUYỆT
+  // =========================================
+
+  const STORAGE_KEY =
+    "DU_DUONG_SO_MAY_NAY";
+
+
+  // =========================================
+  // KIỂM TRA MÁY ĐÃ CÓ SỐ CHƯA
+  // =========================================
+
+  function kiemTraSoCu() {
+
+    const savedNumber =
+      localStorage.getItem(STORAGE_KEY);
+
+
+    if (savedNumber) {
+
+      hienThiSoCu(
+        Number(savedNumber)
+      );
+
+      return true;
+
+    }
+
+
+    return false;
+
+  }
+
+
+  // =========================================
+  // HIỂN THỊ SỐ ĐÃ QUAY
+  // =========================================
+
+  function hienThiSoCu(number) {
+
+    const numberBox =
+      document.getElementById("number");
+
+    const button =
+      document.getElementById("button");
+
+    const status =
+      document.getElementById("status");
+
+
+    numberBox.innerText =
+      number;
+
+
+    status.innerText =
+      "Bạn đã quay số này rồi";
+
+
+    button.innerText =
+      "ĐÃ QUAY";
+
+
+    button.disabled =
+      true;
+
+
+    taoBarcode(number);
+
+  }
+
+
+  // =========================================
+  // QUAY SỐ
+  // =========================================
+
+  function quaySo() {
+
+    // Kiểm tra lại trước khi quay
+    const oldNumber =
+      localStorage.getItem(STORAGE_KEY);
+
+
+    if (oldNumber) {
+
+      hienThiSoCu(
+        Number(oldNumber)
+      );
+
+      return;
+
+    }
+
+
+    const button =
+      document.getElementById("button");
+
+    const numberBox =
+      document.getElementById("number");
+
+    const status =
+      document.getElementById("status");
+
+
+    button.disabled =
+      true;
+
+
+    numberBox.classList.add(
+      "rolling"
+    );
+
+
+    status.innerText =
+      "Đang quay số...";
+
+
+    let count = 0;
+
+
+    const animation =
+      setInterval(function() {
+
+
+        // Số chạy trên màn hình
+        const random =
+          Math.floor(
+            Math.random() * 100
+          ) + 1;
+
+
+        numberBox.innerText =
+          random;
+
+
+        count++;
+
+
+        // Sau khoảng 2 giây dừng
+        if (count >= 30) {
+
+          clearInterval(animation);
+
+
+          numberBox.classList.remove(
+            "rolling"
+          );
+
+
+          // Tạo số cuối cùng
+          const result =
+            Math.floor(
+              Math.random() * 100
+            ) + 1;
+
+
+          // LƯU SỐ VÀO MÁY
+          localStorage.setItem(
+            STORAGE_KEY,
+            result
+          );
+
+
+          // Hiển thị
+          hienThiSoMoi(
+            result
+          );
+
+        }
+
+
+      }, 70);
+
+  }
+
+
+  // =========================================
+  // HIỂN THỊ SỐ MỚI
+  // =========================================
+
+  function hienThiSoMoi(number) {
+
+    const numberBox =
+      document.getElementById("number");
+
+    const button =
+      document.getElementById("button");
+
+    const status =
+      document.getElementById("status");
+
+
+    numberBox.innerText =
+      number;
+
+
+    status.innerText =
+      "🎉 Số may mắn của bạn là " +
+      number;
+
+
+    button.innerText =
+      "ĐÃ QUAY";
+
+
+    button.disabled =
+      true;
+
+
+    taoBarcode(number);
+
+  }
+
+
+  // =========================================
+  // TẠO MÃ GẠCH NGANG
+  // =========================================
+
+  function taoBarcode(number) {
+
+    JsBarcode(
+      "#barcode",
+      String(number),
+      {
+
+        format: "CODE128",
+
+        width: 3,
+
+        height: 70,
+
+        displayValue: true,
+
+        fontSize: 18,
+
+        margin: 5
+
+      }
+    );
+
+  }
+
+
+  // =========================================
+  // KHI MỞ TRANG
+  // =========================================
+
+  kiemTraSoCu();
+
+</script>
+
+</body>
+</html>
