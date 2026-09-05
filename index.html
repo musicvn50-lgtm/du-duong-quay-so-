@@ -1,12 +1,8 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
-
 <meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>DU DƯƠNG - Quay số</title>
 
@@ -19,15 +15,11 @@
 }
 
 body {
-
   margin: 0;
-
   min-height: 100vh;
 
   display: flex;
-
   justify-content: center;
-
   align-items: center;
 
   background: #f6efdc;
@@ -35,11 +27,8 @@ body {
   font-family: Arial, sans-serif;
 }
 
-
 .card {
-
   width: 92%;
-
   max-width: 500px;
 
   padding: 45px 30px;
@@ -54,11 +43,8 @@ body {
     0 15px 45px rgba(60,40,20,.15);
 }
 
-
 .title {
-
   font-size: 42px;
-
   font-weight: 900;
 
   color: #2e241d;
@@ -66,42 +52,31 @@ body {
   margin-bottom: 8px;
 }
 
-
 .subtitle {
-
   font-size: 17px;
-
   font-weight: bold;
 
   color: #98583d;
 }
 
-
 .number {
-
   height: 130px;
 
   margin: 45px 0 30px;
 
   display: flex;
-
   justify-content: center;
-
   align-items: center;
 
   font-size: 100px;
-
   font-weight: 900;
 
   color: #4b2d20;
 }
 
-
 .rolling {
-
   animation: rolling .08s infinite alternate;
 }
-
 
 @keyframes rolling {
 
@@ -115,9 +90,7 @@ body {
 
 }
 
-
 button {
-
   border: none;
 
   padding: 17px 45px;
@@ -129,30 +102,21 @@ button {
   color: white;
 
   font-size: 20px;
-
   font-weight: bold;
 
   cursor: pointer;
 }
 
-
 button:hover {
-
   transform: scale(1.03);
-
 }
 
-
 button:disabled {
-
   opacity: .6;
-
   cursor: not-allowed;
 }
 
-
 .status {
-
   min-height: 25px;
 
   margin-top: 20px;
@@ -162,23 +126,17 @@ button:disabled {
   font-size: 15px;
 }
 
-
 .barcode {
-
   margin-top: 25px;
 
   min-height: 90px;
 
   display: flex;
-
   justify-content: center;
-
   align-items: center;
 }
 
-
 .note {
-
   margin-top: 20px;
 
   color: #aaa;
@@ -187,7 +145,6 @@ button:disabled {
 }
 
 </style>
-
 </head>
 
 
@@ -199,7 +156,6 @@ button:disabled {
   <div class="title">
     DU DƯƠNG
   </div>
-
 
   <div class="subtitle">
     SỐ MAY MẮN 1 – 100
@@ -253,49 +209,52 @@ button:disabled {
 
 
 // ==================================================
-// GOOGLE APPS SCRIPT
+// GOOGLE APPS SCRIPT API
 // ==================================================
 
 const API_URL =
-"https://script.google.com/macros/s/AKfycby6LV3mB4YfvbH2rYAKEvOKKjWJL3IZi4yqZf98CbCZaBlhgUF-fKEsfDQGaHVdlAKV/exec";
+"https://script.google.com/macros/s/AKfycbxWCGFd2DfCP8BiP8cowMs0bEN6TH-FCBrrT-f7MRTf6GdATDb4qIrw5LZ5UoGiHkBC/exec";
 
 
 // ==================================================
-// TẠO ID THIẾT BỊ
+// LOCAL STORAGE
 // ==================================================
 
-function getClientId() {
+const STORAGE_KEY =
+"DU_DUONG_SO_MAY_NAY";
+
+const DEVICE_KEY =
+"DU_DUONG_DEVICE_ID";
+
+
+// ==================================================
+// TẠO MÃ THIẾT BỊ
+// ==================================================
+
+function getDeviceId() {
 
   let id =
-    localStorage.getItem("DU_DUONG_DEVICE_ID");
+    localStorage.getItem(DEVICE_KEY);
+
 
   if (!id) {
 
-    if (
-      window.crypto &&
-      crypto.randomUUID
-    ) {
+    id =
+      "DD-" +
+      Date.now() +
+      "-" +
+      Math.random()
+        .toString(36)
+        .substring(2, 12);
 
-      id = crypto.randomUUID();
-
-    } else {
-
-      id =
-        "device-" +
-        Date.now() +
-        "-" +
-        Math.random()
-          .toString(36)
-          .substring(2);
-
-    }
 
     localStorage.setItem(
-      "DU_DUONG_DEVICE_ID",
+      DEVICE_KEY,
       id
     );
 
   }
+
 
   return id;
 
@@ -303,18 +262,10 @@ function getClientId() {
 
 
 // ==================================================
-// LƯU SỐ TRÊN MÁY
+// HIỂN THỊ SỐ
 // ==================================================
 
-const STORAGE_KEY =
-"DU_DUONG_SO_MAY_NAY";
-
-
-// ==================================================
-// HIỂN THỊ SỐ CŨ
-// ==================================================
-
-function hienThiSoCu(number) {
+function hienThiSo(number, daQuay) {
 
   const numberBox =
     document.getElementById("number");
@@ -326,116 +277,179 @@ function hienThiSoCu(number) {
     document.getElementById("status");
 
 
-  numberBox.innerText =
+  const ma =
     String(number).padStart(3, "0");
 
 
-  status.innerText =
-    "Bạn đã quay số này rồi";
+  numberBox.innerText =
+    ma;
 
 
-  button.innerText =
-    "ĐÃ QUAY";
+  taoBarcode(ma);
 
 
-  button.disabled =
-    true;
+  if (daQuay) {
 
+    status.innerText =
+      "Bạn đã quay số này rồi";
 
-  taoBarcode(number);
+    button.innerText =
+      "ĐÃ QUAY";
+
+    button.disabled =
+      true;
+
+  } else {
+
+    status.innerText =
+      "🎉 Số may mắn của bạn là " + ma;
+
+    button.innerText =
+      "ĐÃ QUAY";
+
+    button.disabled =
+      true;
+
+  }
 
 }
 
 
 // ==================================================
-// KIỂM TRA LOCALSTORAGE
+// BARCODE
 // ==================================================
 
-function kiemTraSoCu() {
+function taoBarcode(ma) {
 
-  const savedNumber =
-    localStorage.getItem(
-      STORAGE_KEY
-    );
+  if (
+    typeof JsBarcode ===
+    "undefined"
+  ) {
 
-
-  if (savedNumber) {
-
-    hienThiSoCu(
-      Number(savedNumber)
-    );
-
-    return true;
+    return;
 
   }
 
 
-  return false;
+  JsBarcode(
+    "#barcode",
+    ma,
+    {
+      format: "CODE128",
+      width: 3,
+      height: 70,
+      displayValue: true,
+      fontSize: 18,
+      margin: 5
+    }
+  );
 
 }
 
 
 // ==================================================
-// GỌI GOOGLE APPS SCRIPT BẰNG JSONP
+// GỌI GOOGLE APPS SCRIPT
+// JSONP
 // ==================================================
 
-function goiAPI(callback) {
+function goiGoogle(callback) {
 
-  const clientId =
+  const deviceId =
     encodeURIComponent(
-      getClientId()
+      getDeviceId()
     );
 
 
   const callbackName =
-    "duDuongCallback_" +
-    Date.now();
-
-
-  window[callbackName] =
-    function(data) {
-
-      try {
-
-        callback(data);
-
-      } finally {
-
-        delete window[callbackName];
-
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-
-      }
-
-    };
+    "duDuong_" +
+    Date.now() +
+    "_" +
+    Math.floor(
+      Math.random() * 100000
+    );
 
 
   const script =
     document.createElement("script");
 
 
-  script.id =
-    callbackName;
+  let finished = false;
 
 
-  script.src =
-    API_URL +
-    "?clientId=" +
-    clientId +
-    "&callback=" +
-    callbackName;
+  const timeout =
+    setTimeout(function() {
+
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+
+      try {
+        delete window[callbackName];
+      } catch(e) {}
+
+      callback({
+        success: false,
+        message:
+          "Không thể kết nối với hệ thống"
+      });
+
+    }, 15000);
+
+
+  window[callbackName] =
+    function(data) {
+
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+
+      clearTimeout(timeout);
+
+
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+
+
+      try {
+        delete window[callbackName];
+      } catch(e) {}
+
+
+      callback(data);
+
+    };
 
 
   script.onerror =
     function() {
 
-      delete window[callbackName];
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+
+      clearTimeout(timeout);
+
 
       if (script.parentNode) {
         script.parentNode.removeChild(script);
       }
+
+
+      try {
+        delete window[callbackName];
+      } catch(e) {}
+
 
       callback({
         success: false,
@@ -446,7 +460,19 @@ function goiAPI(callback) {
     };
 
 
-  document.body.appendChild(script);
+  script.src =
+    API_URL +
+    "?clientId=" +
+    deviceId +
+    "&callback=" +
+    callbackName +
+    "&t=" +
+    Date.now();
+
+
+  document.body.appendChild(
+    script
+  );
 
 }
 
@@ -457,23 +483,6 @@ function goiAPI(callback) {
 
 function quaySo() {
 
-  const oldNumber =
-    localStorage.getItem(
-      STORAGE_KEY
-    );
-
-
-  if (oldNumber) {
-
-    hienThiSoCu(
-      Number(oldNumber)
-    );
-
-    return;
-
-  }
-
-
   const button =
     document.getElementById("button");
 
@@ -482,6 +491,25 @@ function quaySo() {
 
   const status =
     document.getElementById("status");
+
+
+  // Kiểm tra mã đã lưu trên thiết bị
+  const oldNumber =
+    localStorage.getItem(
+      STORAGE_KEY
+    );
+
+
+  if (oldNumber) {
+
+    hienThiSo(
+      Number(oldNumber),
+      true
+    );
+
+    return;
+
+  }
 
 
   button.disabled =
@@ -503,6 +531,7 @@ function quaySo() {
   const animation =
     setInterval(function() {
 
+
       const random =
         Math.floor(
           Math.random() * 100
@@ -510,7 +539,10 @@ function quaySo() {
 
 
       numberBox.innerText =
-        String(random).padStart(3, "0");
+        String(random).padStart(
+          3,
+          "0"
+        );
 
 
       count++;
@@ -518,7 +550,9 @@ function quaySo() {
 
       if (count >= 30) {
 
-        clearInterval(animation);
+        clearInterval(
+          animation
+        );
 
 
         numberBox.classList.remove(
@@ -527,11 +561,15 @@ function quaySo() {
 
 
         status.innerText =
-          "Đang kết nối hệ thống...";
+          "Đang lấy số may mắn...";
 
 
-        // LẤY SỐ THẬT TỪ GOOGLE SHEET
-        goiAPI(function(data) {
+        // ==========================================
+        // LẤY MÃ THẬT TỪ GOOGLE SHEET
+        // ==========================================
+
+        goiGoogle(function(data) {
+
 
           if (
             !data ||
@@ -541,35 +579,46 @@ function quaySo() {
             button.disabled =
               false;
 
+
             status.innerText =
-              data &&
-              data.message
-                ? data.message
-                : "Không thể kết nối với hệ thống";
+              "❌ " +
+              (
+                data &&
+                data.message
+                  ? data.message
+                  : "Không thể kết nối với hệ thống"
+              );
+
 
             return;
 
           }
 
 
-          const result =
-            Number(data.ma);
+          const ma =
+            String(data.ma)
+              .padStart(3, "0");
 
 
-          // LƯU TRÊN MÁY
+          // Lưu mã trên thiết bị
           localStorage.setItem(
             STORAGE_KEY,
-            result
+            ma
           );
 
 
-          hienThiSoMoi(
-            result
+          // Hiển thị
+          hienThiSo(
+            ma,
+            false
           );
+
 
         });
 
+
       }
+
 
     }, 70);
 
@@ -577,95 +626,29 @@ function quaySo() {
 
 
 // ==================================================
-// HIỂN THỊ SỐ MỚI
+// KHI MỞ TRANG
 // ==================================================
 
-function hienThiSoMoi(number) {
+(function() {
 
-  const numberBox =
-    document.getElementById("number");
-
-  const button =
-    document.getElementById("button");
-
-  const status =
-    document.getElementById("status");
+  const oldNumber =
+    localStorage.getItem(
+      STORAGE_KEY
+    );
 
 
-  numberBox.innerText =
-    String(number).padStart(3, "0");
+  if (oldNumber) {
 
-
-  status.innerText =
-    "🎉 Số may mắn của bạn là " +
-    String(number).padStart(3, "0");
-
-
-  button.innerText =
-    "ĐÃ QUAY";
-
-
-  button.disabled =
-    true;
-
-
-  taoBarcode(number);
-
-}
-
-
-// ==================================================
-// BARCODE
-// ==================================================
-
-function taoBarcode(number) {
-
-  if (
-    typeof JsBarcode ===
-    "undefined"
-  ) {
-
-    return;
+    hienThiSo(
+      oldNumber,
+      true
+    );
 
   }
 
-
-  JsBarcode(
-    "#barcode",
-
-    String(number).padStart(3, "0"),
-
-    {
-
-      format: "CODE128",
-
-      width: 3,
-
-      height: 70,
-
-      displayValue: true,
-
-      fontSize: 18,
-
-      margin: 5
-
-    }
-
-  );
-
-}
-
-
-// ==================================================
-// CHẠY KHI MỞ TRANG
-// ==================================================
-
-kiemTraSoCu();
-
+})();
 
 </script>
 
-
 </body>
-
 </html>
